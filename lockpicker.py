@@ -21,7 +21,7 @@ import pandas as pd
 import numpy as np
 from sklearn.externals import joblib
 from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier
-from sklearn.cross_validation import StratifiedKFold, KFold
+from sklearn.cross_validation import StratifiedKFold, KFold, train_test_split
 from sklearn.metrics import classification_report
 from sklearn.feature_selection import SelectPercentile, f_classif
 from time import gmtime, strftime
@@ -47,8 +47,11 @@ def createExtraFeatures():
     #create extra features
 
 #split training into train and cv sets
-def splitTrainingToCV(trainData, percentage):
-
+def splitTrainingToCV(trainData, ycol, percentage):
+     trainTrainData_X, trainTrainData_y, trainCVData_X, trainCVData_y = train_test_split(\
+                                                                        trainData[trainData.columns not in ycol],\
+                                                                        trainData[ycol], random_state=1)
+     return trainTrainData_X, trainTrainData_y, trainCVData_X, trainCVData_y
 #read total rows of all data and spit back row count
 def numberOfFolds(percentage=0.02):
     return round(1.0/percentage)
@@ -82,7 +85,17 @@ def createClassifiers(clfType, indices, X_train, y_train, features=0, findTop=1,
 
     return tempclf
 
-def createClassifierGroup(clfType):
+def createClassifierGroup(clfType, indices, X_train, y_train, thresholds, folds, features=0, findTop=1 ):
+    clfgroup = []
+
+    if findTop == 1:
+        clfgroup = [createClassifiers(clfType, indices, X_train[test_index], y_train[test_index], \
+                        features=0, findTop=1, findTopPercentile=p) for train_index, test_index in folds for p in thresholds]
+    else:
+        clfgroup = [createClassifiers(clfType, indices, X_train[test_index], y_train[test_index], \
+                        features, findTop=0, findTopPercentile=p) for train_index, test_index in folds forr p in thresholds]
+
+    return clfgroup
 
 def featureCorrelationMatrix():
 
@@ -119,26 +132,26 @@ def createEnsemblePrediction():
 #main
 
 
-def main(trainData, testData, foldPercentage, cvThreshold=0.25, selectFeatures=0,ensembleMethod="average", stratifiedFolds=1):
+def main(trainData, testData, ycol, foldPercentage, cvPercentage=0.25, selectFeatures=0,ensembleMethod="average", stratifiedFolds=1):
     print "Let the data lockpicking begin!"
     np.seed(42)
     print "Reading Data"
     train, test = readData(trainData, testData)
-    trainTrainData, trainCVData = splitTrainingToCV(trainData, percentage = 0.25)
+    trainTrainData_X, trainTrainData_y, trainCVData_X, trainCVData_y = splitTrainingToCV(trainData, \
+                                                                        ycol, cvPercentage)
     
     thresholds = [5,10,25,50]
     folds = createFolds(trainData, numberOfFolds(foldPercentage), stratifiedFolds)
 
     clfs = []
-    gbmsTop = 
-    etcsTop = 
+    gbmsTop = createClassifierGroup("gbm", indices, X_train, y_train, thresholds, folds, 0, 1)
+    etcsTop = createClassifierGroup("etc", indices, X_train, y_train, thresholds, folds, 0, 1)
     clfs.append(gbmsTop)
     clfs.append(etcsTop)
 
     if selectFeatures != 0:
-        gbmsSelect = []
-
-        etcsSelect = []
+        gbmsSelect = createClassifierGroup("gbm", indices, X_train, y_train, thresholds, folds, selectFeatures, 0)
+        etcsSelect = createClassifierGroup("etc", indices, X_train, y_train, thresholds, folds, selectFeatures, 0)
 
         clfs.append(gbmsSelect)
         clfs.append(etcsSelect)
