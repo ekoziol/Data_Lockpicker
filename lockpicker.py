@@ -47,7 +47,7 @@ def createExtraFeatures():
     #create extra features
 
 #split training into train and cv sets
-def splitTrainingToCV(trainData, percentage = 0.25):
+def splitTrainingToCV(trainData, percentage):
 
 #read total rows of all data and spit back row count
 def numberOfFolds(percentage=0.02):
@@ -82,7 +82,7 @@ def createClassifiers(clfType, indices, X_train, y_train, features=0, findTop=1,
 
     return tempclf
 
-
+def createClassifierGroup(clfType):
 
 def featureCorrelationMatrix():
 
@@ -119,17 +119,30 @@ def createEnsemblePrediction():
 #main
 
 
-def main(trainData, testData, foldPercentage, cvThreshold, ensembleMethod="average", stratifiedFolds=1):
+def main(trainData, testData, foldPercentage, cvThreshold=0.25, selectFeatures=0,ensembleMethod="average", stratifiedFolds=1):
     print "Let the data lockpicking begin!"
     np.seed(42)
     print "Reading Data"
     train, test = readData(trainData, testData)
-
+    trainTrainData, trainCVData = splitTrainingToCV(trainData, percentage = 0.25)
     
     thresholds = [5,10,25,50]
     folds = createFolds(trainData, numberOfFolds(foldPercentage), stratifiedFolds)
 
     clfs = []
+    gbmsTop = 
+    etcsTop = 
+    clfs.append(gbmsTop)
+    clfs.append(etcsTop)
+
+    if selectFeatures != 0:
+        gbmsSelect = []
+
+        etcsSelect = []
+
+        clfs.append(gbmsSelect)
+        clfs.append(etcsSelect)
+
 
 if __name__ == "main":
     main()
