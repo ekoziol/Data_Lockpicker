@@ -1,21 +1,12 @@
-# I didn't have much time to work on this competition, 
-# so I kind of brute forced my way through it, without deep exploratory studies 
-# of the features.
-
-# My submission uses 1000 individual estimators in total. 
-# Half are GBMs and half are Extra Trees. I heavily undersampled the data. 
-# Each estimator deals with approx 10K data points.
-
-# As for the features, half of the estimators deal with only the contract related data. 
-# The other half uses sklearn's feature selection to pick top 150 features 
-# from contract + crime + geodem + weather. Note that each estimator runs its 
-# own feature selection based on its 10K data points.
-
-# There's one little trick I used, which I guess others have also done. 
-# Instead of predicting the losses directly, I took the logarithm, and predicted on that.
-
-# The total training + predicting time on my several years old laptop is around 5-6 hours.
-
+'''
+Created by Eric Koziol
+@erickoziol
+September 7, 2014
+V0.1
+Lockpicker is designed to be a brute force ensembler
+The data is heavily undersampled by taking the test indices of each fold.
+The default fold size is 2 percent of the number of rows.
+'''
 
 import pandas as pd
 import numpy as np
@@ -97,6 +88,22 @@ def createClassifierGroup(clfType, indices, X_train, y_train, thresholds, folds,
 
     return clfgroup
 
+def createClassifierPlatoon(X_train, y_train, thresholds, folds, indices, selectedFeatures=0):
+    clfs = []
+    gbmsTop = createClassifierGroup("gbm", indices, X_train, y_train, thresholds, folds, 0, 1)
+    etcsTop = createClassifierGroup("etc", indices, X_train, y_train, thresholds, folds, 0, 1)
+    clfs.append(gbmsTop)
+    clfs.append(etcsTop)
+
+    if selectFeatures != 0:
+        gbmsSelect = createClassifierGroup("gbm", indices, X_train, y_train, thresholds, folds, selectFeatures, 0)
+        etcsSelect = createClassifierGroup("etc", indices, X_train, y_train, thresholds, folds, selectFeatures, 0)
+
+        clfs.append(gbmsSelect)
+        clfs.append(etcsSelect)
+
+    return clfs
+
 def featureCorrelationMatrix():
 
 #find top features
@@ -112,7 +119,7 @@ def getFeatureNames(columns, selectVector):
 
 #train classifier based on selected features
 def trainClassifieresOnSelectedFeatures(X, y, clf):
-    clf.fit(X,y)
+    clf.clf.fit(X,y)
     return clf
 
 #pickle based on time and name
@@ -123,16 +130,22 @@ def saveClassifiers(clfs, name):
 
 #create prediction
 def createEnsembler(method, X_train, X_test, y_test):
+    
     if method not in ["gbm", "etc", "average"]:
         print "Please select either 'gbm', 'etc', or 'average'"
         break
+    else if method == "gbm":
+        eclf = 
+    else if method == "etc":
+
+    else:
 
 def createEnsemblePrediction():
     
 #main
 
 
-def main(trainData, testData, ycol, foldPercentage, cvPercentage=0.25, selectFeatures=0,ensembleMethod="average", stratifiedFolds=1):
+def main(trainData, testData, ycol, foldPercentage, cvPercentage=0.25, selectedFeatures=0,ensembleMethod="average", stratifiedFolds=1):
     print "Let the data lockpicking begin!"
     np.seed(42)
     print "Reading Data"
@@ -143,18 +156,8 @@ def main(trainData, testData, ycol, foldPercentage, cvPercentage=0.25, selectFea
     thresholds = [5,10,25,50]
     folds = createFolds(trainData, numberOfFolds(foldPercentage), stratifiedFolds)
 
-    clfs = []
-    gbmsTop = createClassifierGroup("gbm", indices, X_train, y_train, thresholds, folds, 0, 1)
-    etcsTop = createClassifierGroup("etc", indices, X_train, y_train, thresholds, folds, 0, 1)
-    clfs.append(gbmsTop)
-    clfs.append(etcsTop)
-
-    if selectFeatures != 0:
-        gbmsSelect = createClassifierGroup("gbm", indices, X_train, y_train, thresholds, folds, selectFeatures, 0)
-        etcsSelect = createClassifierGroup("etc", indices, X_train, y_train, thresholds, folds, selectFeatures, 0)
-
-        clfs.append(gbmsSelect)
-        clfs.append(etcsSelect)
+    clfs = createClassifierPlatoon(X_train, y_train, thresholds, folds, indices, selectedFeatures)
+    clfs = 
 
 
 if __name__ == "main":
