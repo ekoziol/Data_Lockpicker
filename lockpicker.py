@@ -72,8 +72,9 @@ def createClassifiers(clfType, indices, X_train, y_train, features=0, findTop=1,
     else:
         topFeatures = findTopFeatures(X_train, y_train, findTopPercentile)
         topFeatureNames = getFeatureNames(X_train.columns, topFeatures)
-        tempclf = +clf(tclf, indices, topFeatures, topFeatureNames)
+        tempclf = _clf(tclf, indices, topFeatures, topFeatureNames)
 
+    tempclf.clf = trainClassifiersOnSelectedFeatures(X_train[tempclf.FeatureNames], y_train, tempclf.clf)
     return tempclf
 
 def createClassifierGroup(clfType, indices, X_train, y_train, thresholds, folds, features=0, findTop=1 ):
@@ -118,7 +119,7 @@ def getFeatureNames(columns, selectVector):
     return columns[selectVector]
 
 #train classifier based on selected features
-def trainClassifieresOnSelectedFeatures(X, y, clf):
+def trainClassifiersOnSelectedFeatures(X, y, clf):
     clf.clf.fit(X,y)
     return clf
 
@@ -134,14 +135,18 @@ def createEnsembler(method, X_train, X_test, y_test):
     if method not in ["gbm", "etc", "average"]:
         print "Please select either 'gbm', 'etc', or 'average'"
         break
-    else if method == "gbm":
-        eclf = 
-    else if method == "etc":
 
+
+
+    if method == "gbm":
+        eclf = tclf = GradientBoostingClassifier(n_estimators=1000)
+    else if method == "etc":
+        eclf = ExtraTreesClassifier(n_estimators=1000, criterion='entropy', bootstrap=True)
     else:
 
-def createEnsemblePrediction():
-    
+def createEnsemblePrediction(clf, X):
+    pred = clf.predict_proba(X)
+    return pred
 #main
 
 
@@ -157,7 +162,7 @@ def main(trainData, testData, ycol, foldPercentage, cvPercentage=0.25, selectedF
     folds = createFolds(trainData, numberOfFolds(foldPercentage), stratifiedFolds)
 
     clfs = createClassifierPlatoon(X_train, y_train, thresholds, folds, indices, selectedFeatures)
-    clfs = 
+    
 
 
 if __name__ == "main":
