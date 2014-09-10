@@ -32,15 +32,19 @@ class _clf:
 #read in train and test data
 
 def readData(trainData, testData):
-    train = pd.read_csv(trainData)
-    test = pd.read_csv(testData)
-    return train, test
+    if isinstance(trainData, str):
+        train = pd.read_csv(trainData)
+        test = pd.read_csv(testData)
+        return train, test
+    else:
+        return trainData, testData
 
 #create extra features
 def createExtraFeatures():
+    1
     #create extra features
 
-#split training into train and cv sets
+    #split training into train and cv sets
 def splitTrainingToCV(trainData, ycol, percentage):
      trainTrainData_X, trainTrainData_y, trainCVData_X, trainCVData_y = train_test_split(\
                                                                         trainData[trainData.columns not in ycol],\
@@ -60,16 +64,16 @@ def createFolds(dfTrain, foldCount, stratified = 0):
 
 #create PCA
 def createPCAFeatures():
-
+    1
 #check if labels are numeric, if not encode them
 def encodeLabels():
-
+    1
 #create list of classifier with indices
 def createClassifiers(clfType, indices, X_train, y_train, features=0, findTop=1, findTopPercentile=10):
     tempclf = []
     tclf = []
     clfName = uuid.uuid1()
-    if clfType = "gbm":
+    if clfType == "gbm":
         tclf = GradientBoostingClassifier(n_estimators=100)
     else:
         tclf = ExtraTreesClassifier(n_estimators=100, criterion='entropy', bootstrap=True)
@@ -88,11 +92,9 @@ def createClassifierGroup(clfType, indices, X_train, y_train, thresholds, folds,
     clfgroup = []
 
     if findTop == 1:
-        clfgroup = [createClassifiers(clfType, indices, X_train[test_index], y_train[test_index], \
-                        features=0, findTop=1, findTopPercentile=p) for train_index, test_index in folds for p in thresholds]
+        clfgroup = [createClassifiers(clfType, indices, X_train[test_index], y_train[test_index], features, findTop, p) for train_index, test_index in folds for p in thresholds]
     else:
-        clfgroup = [createClassifiers(clfType, indices, X_train[test_index], y_train[test_index], \
-                        features, findTop=0, findTopPercentile=p) for train_index, test_index in folds forr p in thresholds]
+        clfgroup = [createClassifiers(clfType, indices, X_train[test_index], y_train[test_index], features, findTop, p) for train_index, test_index in folds for p in thresholds]
 
     return clfgroup
 
@@ -113,7 +115,7 @@ def createClassifierPlatoon(X_train, y_train, thresholds, folds, indices, select
     return clfs
 
 def featureCorrelationMatrix():
-
+    1
 #find top features
 #train classifiers on top 5%, 10%, 25% and 50% of features
 #return classifiers and list of features
@@ -144,10 +146,10 @@ def createEnsembleFrame(clfs, X):
 def createEnsembler(method, X_train, y_train, X_test, y_test):
     
     if method not in ["gbm", "etc", "average"]:
-        print "Please select either 'gbm', 'etc', or 'average'"
-        break
+        raise NameError("Please select either 'gbm', 'etc', or 'average'")
+        
 
-    if method = "average":
+    if method == "average":
         yPred = X_test.mean(axis=1)
         aucmetric(y_test,yPred)
         return
@@ -165,7 +167,7 @@ def createEnsembler(method, X_train, y_train, X_test, y_test):
     return eclf
 
 def createPrediction(clf, X, method=""):
-    if method = "average":
+    if method == "average":
         pred = X.mean(axis=1)
     else:
         pred = clf.predict_proba(X)
@@ -177,9 +179,9 @@ def aucmetric(y,pred):
     auc = metrics.auc(fpr,tpr)
     print "AUC: ", auc
 
-def main(trainData, testData, ycol, idcol, foldPercentage, saveName, cvPercentage=0.25, selectedFeatures=0,ensembleMethod="average", stratifiedFolds=1, seed = 42):
+def main(trainData, testData, ycol, idcol,  saveName, foldPercentage=0.02, cvPercentage=0.25, selectedFeatures=0,ensembleMethod="average", stratifiedFolds=1, seed = 42):
     print "Let the data lockpicking begin!"
-    np.seed(seed)
+    np.random.seed(seed)
     print "Reading Data"
     train, test = readData(trainData, testData)
     trainTrainData_X, trainTrainData_y, trainCVData_X, trainCVData_y = splitTrainingToCV(trainData, \
@@ -202,7 +204,7 @@ def main(trainData, testData, ycol, idcol, foldPercentage, saveName, cvPercentag
     predictionDF[train[ycol].columns] = prediction
     predictionDF.to_csv(name + "-" + strftime("%Y-%m-%d_%H_%M_%S", gmtime()) + ".csv")
 
-
+    print "Good Luck!"
 
 
 
