@@ -24,7 +24,7 @@ class _clf:
         self.clf = clf
         self.indicies = indices
         self.featuresTF = featuresTF
-        self.featuresNames = featuresNames
+        self.featureNames = featureNames
         self.clfName = clfName
         
 
@@ -46,9 +46,13 @@ def createExtraFeatures():
 
     #split training into train and cv sets
 def splitTrainingToCV(trainData, ycol, percentage):
-     trainTrainData_X, trainTrainData_y, trainCVData_X, trainCVData_y = train_test_split(\
-                                                                        trainData[trainData.columns not in ycol],\
-                                                                        trainData[ycol], random_state=1)
+     cols = [col for col in trainData.columns if col not in ycol]
+
+     trainTrainData_X, trainCVData_X, trainTrainData_y,  trainCVData_y = train_test_split(\
+                                                                        trainData[cols],\
+                                                                        trainData[ycol], test_size=percentage)
+     trainTrainData_X = pd.DataFrame(trainTrainData_X, columns = cols)
+     trainCVData_X = pd.DataFrame(trainCVData_X, columns = cols)
      return trainTrainData_X, trainTrainData_y, trainCVData_X, trainCVData_y
 #read total rows of all data and spit back row count
 def numberOfFolds(percentage=0.02):
@@ -56,10 +60,11 @@ def numberOfFolds(percentage=0.02):
 
 #create kfolds for training
 def createFolds(dfTrain, foldCount, stratified = 0):
+    #nrows = len(dfTrain)
     if stratified == 0:
-        kf = KFold(len(dfTrain.index), n_folds=foldCount, indices = True, random_state=2137)       
+        kf = KFold(dfTrain, n_folds=foldCount, indices = True, random_state=2137)       
     else:
-        kf = StratifiedKFold(len(dfTrain.index), n_folds=foldCount, indices = True, random_state=2137)
+        kf = StratifiedKFold(dfTrain, n_folds=foldCount, indices = True)#, random_state=1)
     return kf
 
 #create PCA
@@ -85,29 +90,29 @@ def createClassifiers(clfType, indices, X_train, y_train, features=0, findTop=1,
         topFeatureNames = getFeatureNames(X_train.columns, topFeatures)
         tempclf = _clf(tclf, indices, topFeatures, topFeatureNames, clfName)
 
-    tempclf.clf = trainClassifiersOnSelectedFeatures(X_train[tempclf.FeatureNames], y_train, tempclf.clf)
+    tempclf.clf = trainClassifiersOnSelectedFeatures(X_train[tempclf.featureNames], y_train, tempclf.clf)
     return tempclf
 
-def createClassifierGroup(clfType, indices, X_train, y_train, thresholds, folds, features=0, findTop=1 ):
+def createClassifierGroup(clfType, X_train, y_train, thresholds, folds, features=0, findTop=1 ):
     clfgroup = []
 
     if findTop == 1:
-        clfgroup = [createClassifiers(clfType, indices, X_train[test_index], y_train[test_index], features, findTop, p) for train_index, test_index in folds for p in thresholds]
+        clfgroup = [createClassifiers(clfType, test_index, X_train.ix[test_index,:], y_train[test_index], features, findTop, p) for train_index, test_index in folds for p in thresholds]
     else:
-        clfgroup = [createClassifiers(clfType, indices, X_train[test_index], y_train[test_index], features, findTop, p) for train_index, test_index in folds for p in thresholds]
+        clfgroup = [createClassifiers(clfType, test_index, X_train.ix[test_index,:], y_train[test_index], features, findTop, p) for train_index, test_index in folds for p in thresholds]
 
     return clfgroup
 
-def createClassifierPlatoon(X_train, y_train, thresholds, folds, indices, selectedFeatures=0):
+def createClassifierPlatoon(X_train, y_train, thresholds, folds, selectedFeatures=0):
     clfs = []
-    gbmsTop = createClassifierGroup("gbm", indices, X_train, y_train, thresholds, folds, 0, 1)
-    etcsTop = createClassifierGroup("etc", indices, X_train, y_train, thresholds, folds, 0, 1)
+    gbmsTop = createClassifierGroup("gbm", X_train, y_train, thresholds, folds, 0, 1)
+    etcsTop = createClassifierGroup("etc", X_train, y_train, thresholds, folds, 0, 1)
     clfs.append(gbmsTop)
     clfs.append(etcsTop)
 
-    if selectFeatures != 0:
-        gbmsSelect = createClassifierGroup("gbm", indices, X_train, y_train, thresholds, folds, selectFeatures, 0)
-        etcsSelect = createClassifierGroup("etc", indices, X_train, y_train, thresholds, folds, selectFeatures, 0)
+    if selectedFeatures != 0:
+        gbmsSelect = createClassifierGroup("gbm", X_train, y_train, thresholds, folds, selectedFeatures, 0)
+        etcsSelect = createClassifierGroup("etc", X_train, y_train, thresholds, folds, selectedFeatures, 0)
 
         clfs.append(gbmsSelect)
         clfs.append(etcsSelect)
@@ -129,7 +134,7 @@ def getFeatureNames(columns, selectVector):
 
 #train classifier based on selected features
 def trainClassifiersOnSelectedFeatures(X, y, clf):
-    clf.clf.fit(X,y)
+    clf.fit(X,y)
     return clf
 
 #pickle based on time and name
@@ -188,9 +193,9 @@ def main(trainData, testData, ycol, idcol,  saveName, foldPercentage=0.02, cvPer
                                                                         ycol, cvPercentage)
     
     thresholds = [5,10,25,50]
-    folds = createFolds(trainData, numberOfFolds(foldPercentage), stratifiedFolds)
+    folds = createFolds(trainTrainData_X, numberOfFolds(foldPercentage), stratifiedFolds)
 
-    clfs = createClassifierPlatoon(X_train, y_train, thresholds, folds, indices, selectedFeatures)
+    clfs = createClassifierPlatoon(trainTrainData_X, trainTrainData_y, thresholds, folds, selectedFeatures)
     saveClassifiers(clfs, saveName)
 
     ensembleFrameTrain = createEnsembleFrame(clfs, trainTrainData_X)
