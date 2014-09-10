@@ -117,7 +117,7 @@ def createClassifierPlatoon(X_train, y_train, thresholds, folds, selectedFeature
         clfs.append(gbmsSelect)
         clfs.append(etcsSelect)
 
-    return clfs
+    return np.ravel(clfs)
 
 def featureCorrelationMatrix():
     1
@@ -144,7 +144,7 @@ def saveClassifiers(clfs, name):
     joblib.dump(clfs, saveName)
 
 def createEnsembleFrame(clfs, X):
-    ensembleFrame = pd.DataFrame([createPrediction(c.clf,X) for c in clfs])
+    ensembleFrame = pd.DataFrame([createPrediction(c.clf,X[c.featureNames]) for c in clfs])
     return ensembleFrame
 
 #create prediction
@@ -196,6 +196,7 @@ def main(trainData, testData, ycol, idcol,  saveName, foldPercentage=0.02, cvPer
     folds = createFolds(trainTrainData_X, numberOfFolds(foldPercentage), stratifiedFolds)
 
     clfs = createClassifierPlatoon(trainTrainData_X, trainTrainData_y, thresholds, folds, selectedFeatures)
+    #return clfs
     saveClassifiers(clfs, saveName)
 
     ensembleFrameTrain = createEnsembleFrame(clfs, trainTrainData_X)
