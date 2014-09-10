@@ -10,6 +10,7 @@ The default fold size is 2 percent of the number of rows.
 
 import pandas as pd
 import numpy as np
+import uuid
 from sklearn.externals import joblib
 from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier
 from sklearn.cross_validation import StratifiedKFold, KFold, train_test_split
@@ -19,11 +20,13 @@ from time import gmtime, strftime
 
 #define class variable for classifier
 class _clf:
-    def __init__(self, clf, indices, featuresTF, featureNames):
+    def __init__(self, clf, indices, featuresTF, featureNames, clfName):
         self.clf = clf
         self.indicies = indices
         self.featuresTF = featuresTF
         self.featuresNames = featuresNames
+        self.clfName = clfName
+        
 
 
 #read in train and test data
@@ -58,21 +61,25 @@ def createFolds(dfTrain, foldCount, stratified = 0):
 #create PCA
 def createPCAFeatures():
 
+#check if labels are numeric, if not encode them
+def encodeLabels():
+
 #create list of classifier with indices
 def createClassifiers(clfType, indices, X_train, y_train, features=0, findTop=1, findTopPercentile=10):
     tempclf = []
     tclf = []
+    clfName = uuid.uuid1()
     if clfType = "gbm":
         tclf = GradientBoostingClassifier(n_estimators=100)
     else:
         tclf = ExtraTreesClassifier(n_estimators=100, criterion='entropy', bootstrap=True)
 
     if findTop != 1:
-        tempclf = _clf(tclf, indices, [x in features for x in X_train.columns], features)
+        tempclf = _clf(tclf, indices, [x in features for x in X_train.columns], features, clfName)
     else:
         topFeatures = findTopFeatures(X_train, y_train, findTopPercentile)
         topFeatureNames = getFeatureNames(X_train.columns, topFeatures)
-        tempclf = _clf(tclf, indices, topFeatures, topFeatureNames)
+        tempclf = _clf(tclf, indices, topFeatures, topFeatureNames, clfName)
 
     tempclf.clf = trainClassifiersOnSelectedFeatures(X_train[tempclf.FeatureNames], y_train, tempclf.clf)
     return tempclf
@@ -129,30 +136,50 @@ def saveClassifiers(clfs, name):
     saveName = name + "--" + dt + ".pkl"
     joblib.dump(clfs, saveName)
 
+def createEnsembleFrame(clfs, X):
+    ensembleFrame = pd.DataFrame([createPrediction(c.clf,X) for c in clfs])
+    return ensembleFrame
+
 #create prediction
-def createEnsembler(method, X_train, X_test, y_test):
+def createEnsembler(method, X_train, y_train, X_test, y_test):
     
     if method not in ["gbm", "etc", "average"]:
         print "Please select either 'gbm', 'etc', or 'average'"
         break
 
-
+    if method = "average":
+        yPred = X_test.mean(axis=1)
+        aucmetric(y_test,yPred)
+        return
 
     if method == "gbm":
-        eclf = tclf = GradientBoostingClassifier(n_estimators=1000)
-    else if method == "etc":
-        eclf = ExtraTreesClassifier(n_estimators=1000, criterion='entropy', bootstrap=True)
+        eclf =  GradientBoostingClassifier(n_estimators=1000)
+        eclf.fit(X_train, y_train)
+        yPred = eclf.predict_proba(X_test)
+        aucmetric(y_test,yPred)
     else:
+        eclf = ExtraTreesClassifier(n_estimators=1000, criterion='entropy', bootstrap=True)
+        eclf.fit(X_train, y_train)
+        yPred = eclf.predict_proba(X_test)
+        aucmetric(y_test,yPred)
+    return eclf
 
-def createEnsemblePrediction(clf, X):
-    pred = clf.predict_proba(X)
+def createPrediction(clf, X, method=""):
+    if method = "average":
+        pred = X.mean(axis=1)
+    else:
+        pred = clf.predict_proba(X)
     return pred
 #main
 
+def aucmetric(y,pred):
+    fpr, tpr, thresholds = metrics.roc_curve(np.ravel(y), pred, pos_label=1)
+    auc = metrics.auc(fpr,tpr)
+    print "AUC: ", auc
 
-def main(trainData, testData, ycol, foldPercentage, cvPercentage=0.25, selectedFeatures=0,ensembleMethod="average", stratifiedFolds=1):
+def main(trainData, testData, ycol, idcol, foldPercentage, saveName, cvPercentage=0.25, selectedFeatures=0,ensembleMethod="average", stratifiedFolds=1, seed = 42):
     print "Let the data lockpicking begin!"
-    np.seed(42)
+    np.seed(seed)
     print "Reading Data"
     train, test = readData(trainData, testData)
     trainTrainData_X, trainTrainData_y, trainCVData_X, trainCVData_y = splitTrainingToCV(trainData, \
@@ -162,7 +189,22 @@ def main(trainData, testData, ycol, foldPercentage, cvPercentage=0.25, selectedF
     folds = createFolds(trainData, numberOfFolds(foldPercentage), stratifiedFolds)
 
     clfs = createClassifierPlatoon(X_train, y_train, thresholds, folds, indices, selectedFeatures)
-    
+    saveClassifiers(clfs, saveName)
+
+    ensembleFrameTrain = createEnsembleFrame(clfs, trainTrainData_X)
+    ensembleFrameTest = createEnsembleFrame(clfs, trainCVData_X)
+
+    ensembleCLF = createEnsembler(ensembleMethod, ensembeFrameTrain, trainTrainData_y, ensembleFrameTest, trainCVData_y)
+
+    testFrame = createEnsembleFrame(clfs, test)
+    prediction = createPrediction(ensembleCLF, testFrame, ensembleMethod)
+    predictionDF = pd.DataFrame(test[idcol])
+    predictionDF[train[ycol].columns] = prediction
+    predictionDF.to_csv(name + "-" + strftime("%Y-%m-%d_%H_%M_%S", gmtime()) + ".csv")
+
+
+
+
 
 
 if __name__ == "main":
