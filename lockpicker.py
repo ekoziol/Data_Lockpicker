@@ -163,12 +163,12 @@ def createEnsembler(method, X_train, y_train, X_test, y_test):
     if method == "gbm":
         eclf =  GradientBoostingClassifier(n_estimators=1000)
         eclf.fit(X_train, y_train)
-        yPred = eclf.predict_proba(X_test)
+        yPred = eclf.predict_proba(X_test)[:,1]
         aucmetric(y_test,yPred)
     else:
         eclf = ExtraTreesClassifier(n_estimators=1000, criterion='entropy', bootstrap=True)
         eclf.fit(X_train, y_train)
-        yPred = eclf.predict_proba(X_test)
+        yPred = eclf.predict_proba(X_test)[:,1]
         aucmetric(y_test,yPred)
     return eclf
 
