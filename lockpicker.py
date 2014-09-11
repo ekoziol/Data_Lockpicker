@@ -144,7 +144,7 @@ def saveClassifiers(clfs, name):
     joblib.dump(clfs, saveName)
 
 def createEnsembleFrame(clfs, X):
-    ensembleFrame = pd.DataFrame([createPrediction(c.clf,X[c.featureNames]) for c in clfs])
+    ensembleFrame = pd.DataFrame([createPrediction(c.clf,X.ix[:,c.featureNames]) for c in clfs])
     return ensembleFrame
 
 #create prediction
@@ -172,10 +172,12 @@ def createEnsembler(method, X_train, y_train, X_test, y_test):
     return eclf
 
 def createPrediction(clf, X, method=""):
+    #print clf
+    #print X.head()
     if method == "average":
         pred = X.mean(axis=1)
     else:
-        pred = clf.predict_proba(X)
+        pred = clf.predict_proba(X)[:,1]
     return pred
 #main
 
@@ -208,7 +210,7 @@ def main(trainData, testData, ycol, idcol,  saveName, foldPercentage=0.02, cvPer
     prediction = createPrediction(ensembleCLF, testFrame, ensembleMethod)
     predictionDF = pd.DataFrame(test[idcol])
     predictionDF[train[ycol].columns] = prediction
-    predictionDF.to_csv(name + "-" + strftime("%Y-%m-%d_%H_%M_%S", gmtime()) + ".csv")
+    predictionDF.to_csv(saveName + "-" + strftime("%Y-%m-%d_%H_%M_%S", gmtime()) + ".csv")
 
     print "Good Luck!"
 
