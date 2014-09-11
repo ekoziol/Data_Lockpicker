@@ -210,7 +210,7 @@ def main(trainData, testData, ycol, idcol,  saveName, foldPercentage=0.02, cvPer
     testFrame = createEnsembleFrame(clfs, test)
     prediction = createPrediction(ensembleCLF, testFrame, ensembleMethod)
     predictionDF = pd.DataFrame(test[idcol])
-    predictionDF[train[ycol].columns] = prediction
+    predictionDF[ycol] = prediction
     predictionDF.to_csv(saveName + "-" + strftime("%Y-%m-%d_%H_%M_%S", gmtime()) + ".csv")
 
     print "Good Luck!"
