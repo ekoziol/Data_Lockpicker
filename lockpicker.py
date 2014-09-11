@@ -16,6 +16,7 @@ from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier
 from sklearn.cross_validation import StratifiedKFold, KFold, train_test_split
 from sklearn.metrics import classification_report
 from sklearn.feature_selection import SelectPercentile, f_classif
+from sklearn import metrics
 from time import gmtime, strftime
 
 #define class variable for classifier
@@ -144,7 +145,7 @@ def saveClassifiers(clfs, name):
     joblib.dump(clfs, saveName)
 
 def createEnsembleFrame(clfs, X):
-    ensembleFrame = pd.DataFrame([createPrediction(c.clf,X.ix[:,c.featureNames]) for c in clfs])
+    ensembleFrame = pd.DataFrame(np.transpose([createPrediction(c.clf,X.ix[:,c.featureNames]) for c in clfs]))
     return ensembleFrame
 
 #create prediction
@@ -204,7 +205,7 @@ def main(trainData, testData, ycol, idcol,  saveName, foldPercentage=0.02, cvPer
     ensembleFrameTrain = createEnsembleFrame(clfs, trainTrainData_X)
     ensembleFrameTest = createEnsembleFrame(clfs, trainCVData_X)
 
-    ensembleCLF = createEnsembler(ensembleMethod, ensembeFrameTrain, trainTrainData_y, ensembleFrameTest, trainCVData_y)
+    ensembleCLF = createEnsembler(ensembleMethod, ensembleFrameTrain, trainTrainData_y, ensembleFrameTest, trainCVData_y)
 
     testFrame = createEnsembleFrame(clfs, test)
     prediction = createPrediction(ensembleCLF, testFrame, ensembleMethod)
